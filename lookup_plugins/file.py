@@ -1,24 +1,35 @@
-# @todo COMMENT THIS MO ^ dlundgren
+# Ansible lookup plugin for getting the content of the file
+# (c) 2015, David Lundgren <dlundgren@syberisle.net>
+#
+# MIT License
+
+# For each item will find the first file and return it's content
+
 from ansible import constants as C
 from ansible import utils, errors
-from ansible.utils import template
-
 import os
+import codecs
+
 
 class LookupModule(object):
     def __init__(self, basedir=None, **kwargs):
         self.basedir = basedir
 
     def run(self, terms, inject=None, **kwargs):
-        ret = []
 
-        for item in terms['items']:
-            content = self.resolveAvailableFilePath(template.template_from_string('', terms['name'], {'item':item}), inject)
-            if content:
-                item[terms['key']] = content
-                ret.append(item)
+        terms = utils.listify_lookup_plugin_terms(terms, self.basedir, inject)
 
-        return ret
+        if not isinstance(terms, list):
+            terms = [terms]
+
+        for term in terms:
+            for path in self.__getPaths(inject):
+                path = os.path.join(path, 'files', term)
+                if os.path.exists(path):
+                    return [codecs.open(path, encoding="utf8").read().rstrip()]
+                    break
+            else:
+                raise errors.AnsibleError("could not locate file in lookup: %s" % term)
 
     def __getPaths(self, inject):
         paths = []
@@ -40,14 +51,3 @@ class LookupModule(object):
         [unq.append(i) for i in paths if not unq.count(i)]
 
         return unq
-
-    def resolveAvailableFilePath(self, file, inject):
-        ret = None
-
-        for path in self.__getPaths(inject):
-            path = os.path.join(path, 'files', file)
-            if os.path.exists(path):
-                ret = path
-                break
-
-        return ret

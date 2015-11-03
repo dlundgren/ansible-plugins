@@ -2,6 +2,11 @@
 
 Custom modules for ansible.
 
+This repository contains plugins that override file, first_found, found_files, and vars_files plugins with 
+ones that allow to look int custom locations
+
+You can control this by setting lookup_file_paths or lookup_vars_paths in your ansible.cfg
+
 # Lookup plugins
 
 ### available_file_content

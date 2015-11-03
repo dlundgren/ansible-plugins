@@ -1,8 +1,12 @@
-# @todo COMMENT THIS MO ^ dlundgren
+# Ansible lookup plugin for getting the content of the first available file
+# (c) 2015, David Lundgren <dlundgren@syberisle.net>
+#
+# MIT License
+
+# This will return a list of files that found out of those passed in
+
 from ansible import constants as C
 from ansible import utils, errors
-from ansible.utils import template
-
 import os
 
 class LookupModule(object):
@@ -10,13 +14,18 @@ class LookupModule(object):
         self.basedir = basedir
 
     def run(self, terms, inject=None, **kwargs):
+        terms = utils.listify_lookup_plugin_terms(terms, self.basedir, inject)
         ret = []
 
-        for item in terms['items']:
-            content = self.resolveAvailableFilePath(template.template_from_string('', terms['name'], {'item':item}), inject)
-            if content:
-                item[terms['key']] = content
-                ret.append(item)
+        if not isinstance(terms, list):
+            terms = [terms]
+
+        for term in terms:
+            for path in self.__getPaths(inject):
+                path = os.path.join(path, 'files', term)
+                if os.path.exists(path):
+                    ret.append(path)
+                    break
 
         return ret
 
@@ -40,14 +49,3 @@ class LookupModule(object):
         [unq.append(i) for i in paths if not unq.count(i)]
 
         return unq
-
-    def resolveAvailableFilePath(self, file, inject):
-        ret = None
-
-        for path in self.__getPaths(inject):
-            path = os.path.join(path, 'files', file)
-            if os.path.exists(path):
-                ret = path
-                break
-
-        return ret

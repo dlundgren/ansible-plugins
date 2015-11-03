@@ -6,6 +6,7 @@
 # This will put the content of the found file into the items data
 #
 
+from ansible import constants as C
 from ansible import utils, errors
 from ansible.utils import template
 
@@ -16,31 +17,38 @@ class LookupModule(object):
     def __init__(self, basedir=None, **kwargs):
         self.basedir = basedir
 
+    def __getPaths(self, inject):
+        paths = []
+
+        paths.append(utils.path_dwim(self.basedir, ''))
+
+        if '_original_file' in inject:
+            paths.append(utils.path_dwim_relative(inject['_original_file'], '', '', self.basedir, check=False))
+
+        if 'playbook_dir' in inject:
+            paths.append(inject['playbook_dir'])
+
+        for path in C.get_config(C.p, C.DEFAULTS, 'lookup_file_paths', None, [], islist=True):
+            path = utils.unfrackpath(path)
+            if os.path.exists(path):
+                paths.append(path)
+
+        return paths
+
     def run(self, terms, inject=None, **kwargs):
         ret = []
-
-        playbookDir = None
-        if 'playbook_dir' in inject:
-            playbookDir = inject['playbook_dir']
-
         for item in terms['items']:
-            content = self.loadFileContent(template.template_from_string('', terms['name'], {'item':item}), playbookDir)
+            content = self.loadFileContent(template.template_from_string('', terms['name'], {'item':item}), inject)
             if content:
                 item[terms['key']] = content;
                 ret.append(item)
 
         return ret
 
-    def loadFileContent(self, file, playbookDir):
+    def loadFileContent(self, file, inject):
         ret = None
-        basedir_path = utils.path_dwim(self.basedir, file)
-        playbook_path = None
-
-        if playbookDir:
-            playbook_path = os.path.join(playbookDir, file)
-
-        for path in (basedir_path, playbook_path):
-            path = os.path.abspath(path)
+        for path in self.__getPaths(inject):
+            path = os.path.join(path, 'files', file)
             if os.path.exists(path):
                 with open (path, "r") as myfile:
                     ret = myfile.read()

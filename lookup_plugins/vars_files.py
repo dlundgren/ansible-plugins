@@ -12,36 +12,33 @@ class LookupModule(object):
     def __init__(self, basedir=None, **kwargs):
         self.basedir = basedir
 
-    def __getPaths(self, inject):
-        paths = []
-        
-        paths.append(utils.path_dwim(self.basedir, ''))
-        
-        if '_original_file' in inject:
-            paths.append(utils.path_dwim_relative(inject['_original_file'], '', '', self.basedir, check=False))
-            
-        if 'playbook_dir' in inject and paths[0] != inject['playbook_dir']:
-            paths.append(inject['playbook_dir'])
+    def run(self, terms, inject=None, **kwargs):
 
-        for path in C.get_config(C.p, C.DEFAULTS, 'lookup_file_paths', None, [], islist=True):
+        terms = utils.listify_lookup_plugin_terms(terms, self.basedir, inject)
+        ret = []
+
+        if not isinstance(terms, list):
+            terms = [terms]
+
+        paths = []
+
+        for path in C.get_config(C.p, C.DEFAULTS, 'lookup_vars_paths', None, [], islist=True):
             path = utils.unfrackpath(path)
             if os.path.exists(path):
                 paths.append(path)
 
-        return paths
+        if 'playbook_dir' in inject:
+            paths.append(inject['playbook_dir'])
 
-    def run(self, terms, inject=None, **kwargs):
-        ret = []
+        paths.append(utils.path_dwim(self.basedir, ''))
 
-        if isinstance(terms, basestring):
-            terms = [terms]
+        unq = []
+        [unq.append(i) for i in paths if not unq.count(i)]
 
-        paths = self.__getPaths(inject)
         for term in terms:
-            for path in paths:
-                path = os.path.abspath(path, 'files', term)
+            for path in unq:
+                path = os.path.abspath(os.path.join(path, "vars", term))
                 if os.path.exists(path):
                     ret.append(path)
                     break
-
         return ret
