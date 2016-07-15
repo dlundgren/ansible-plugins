@@ -14,19 +14,19 @@ class LookupModule(object):
 
     def get_paths(self, inject):
         paths = []
-        
-        paths.append(utils.path_dwim(self.basedir, ''))
-        
-        if '_original_file' in inject:
-            paths.append(utils.path_dwim_relative(inject['_original_file'], '', '', self.basedir, check=False))
-            
-        if 'playbook_dir' in inject and paths[0] != inject['playbook_dir']:
-            paths.append(inject['playbook_dir'])
 
-        for path in C.get_config(C.p, C.DEFAULTS, 'lookup_file_paths', None, [], islist=True):
+        for path in C.get_config(C.p, C.DEFAULTS, 'lookup_vars_paths', None, [], islist=True):
             path = utils.unfrackpath(path)
             if os.path.exists(path):
                 paths.append(path)
+
+        if '_original_file' in inject:
+            paths.append(utils.path_dwim_relative(inject['_original_file'], '', None, self.basedir, check=False))
+
+        if 'playbook_dir' in inject and paths[0] != inject['playbook_dir']:
+            paths.append(inject['playbook_dir'])
+
+        paths.append(utils.path_dwim(self.basedir, ''))
 
         return paths
 
@@ -39,7 +39,7 @@ class LookupModule(object):
         paths = self.get_paths(inject)
         for term in terms:
             for path in paths:
-                path = os.path.abspath(path, 'files', term)
+                path = os.path.abspath(os.path.join(path, "vars", term))
                 if os.path.exists(path):
                     ret.append(path)
                     break

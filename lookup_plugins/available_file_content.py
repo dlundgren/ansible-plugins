@@ -11,7 +11,7 @@ class LookupModule(object):
     def __init__(self, basedir=None, **kwargs):
         self.basedir = basedir
 
-    def __getPaths(self, inject):
+    def get_paths(self, inject):
         paths = []
 
         paths.append(utils.path_dwim(self.basedir, ''))
@@ -36,7 +36,7 @@ class LookupModule(object):
             terms = [terms]
 
         for term in terms:
-            for path in self.__getPaths(inject):
+            for path in self.get_paths(inject):
                 path = os.path.join(path, 'files', term)
                 if os.path.exists(path):
                     with open (path, "r") as myfile:

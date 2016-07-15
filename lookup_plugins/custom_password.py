@@ -18,7 +18,7 @@ class LookupModule(object):
         salt_chars = ascii_letters + digits + './'
         return utils.random_password(length=8, chars=salt_chars)
 
-    def __getPaths(self, inject):
+    def get_paths(self, inject):
         paths = []
 
         for path in C.get_config(C.p, C.DEFAULTS, 'lookup_file_paths', None, [], islist=True):
@@ -74,7 +74,7 @@ class LookupModule(object):
             use_chars = paramvals['chars']
 
             # get password or create it if file doesn't exist
-            paths = self.__getPaths(inject)
+            paths = self.get_paths(inject)
             foundPath = None
             for path in paths:
                 path = utils.path_dwim(path, relpath)

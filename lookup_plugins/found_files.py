@@ -21,7 +21,7 @@ class LookupModule(object):
             terms = [terms]
 
         for term in terms:
-            for path in self.__getPaths(inject):
+            for path in self.get_paths(inject):
                 path = os.path.join(path, 'files', term)
                 if os.path.exists(path):
                     ret.append(path)
@@ -29,7 +29,7 @@ class LookupModule(object):
 
         return ret
 
-    def __getPaths(self, inject):
+    def get_paths(self, inject):
         paths = []
 
         for path in C.get_config(C.p, C.DEFAULTS, 'lookup_file_paths', None, [], islist=True):
