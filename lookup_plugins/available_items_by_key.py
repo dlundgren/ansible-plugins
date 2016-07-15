@@ -1,5 +1,5 @@
 # Ansible lookup plugin for getting available items based on a key existing in the item
-# (c) 2015, David Lundgren <dlundgren@syberisle.net>
+# (c) 2015,2016 David Lundgren <dlundgren@syberisle.net>
 
 # For each item of the value(array) of each item if the key exists then the item will be returned
 #

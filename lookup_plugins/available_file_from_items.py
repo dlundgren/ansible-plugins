@@ -1,5 +1,5 @@
 # Ansible lookup plugin for getting the first available file given a list of items and a template
-# (c) 2015, David Lundgren <dlundgren@syberisle.net>
+# (c) 2015,2016 David Lundgren <dlundgren@syberisle.net>
 #
 # Given a list of items it will attempt to find a file in the regular list of paths that is similar to the name
 #
