@@ -90,34 +90,33 @@ class LookupModule(LookupBase):
 
             # get password or create it if file doesn't exist
             paths = self.get_paths(variables)
-            paths.append(self._loader.path_dwim(relpath))
             foundPath = None
             for path in paths:
+                path = os.path.join(path, relpath)
                 if os.path.exists(path):
                     foundPath = path
                     break
 
-            if not foundPath:
-                path = paths.pop()
-                if not os.path.exists(path):
-                    pathdir = os.path.dirname(path)
-                    if not os.path.isdir(pathdir):
-                        try:
-                            os.makedirs(pathdir, mode=0o700)
-                        except OSError, e:
-                            raise AnsibleError("cannot create the path for the password lookup: %s (error was %s)" % (pathdir, str(e)))
+            path = foundPath
+            if not os.path.exists(path):
+                pathdir = os.path.dirname(path)
+                if not os.path.isdir(pathdir):
+                    try:
+                        os.makedirs(pathdir, mode=0o700)
+                    except OSError, e:
+                        raise AnsibleError("cannot create the path for the password lookup: %s (error was %s)" % (pathdir, str(e)))
 
-                    chars = "".join([getattr(string,c,c) for c in use_chars]).replace('"','').replace("'",'')
-                    password = ''.join(random.choice(chars) for _ in range(length))
+                chars = "".join([getattr(string,c,c) for c in params['use_chars']]).replace('"','').replace("'",'')
+                password = ''.join(random.choice(chars) for _ in range(params['length']))
 
-                    if params['encrypt'] is not None:
-                        salt = self.random_salt()
-                        content = '%s salt=%s' % (password, salt)
-                    else:
-                        content = password
-                    with open(path, 'w') as f:
-                        os.chmod(path, 0o600)
-                        f.write(content + '\n')
+                if params['encrypt'] is not None:
+                    salt = self.random_salt()
+                    content = '%s salt=%s' % (password, salt)
+                else:
+                    content = password
+                with open(path, 'w') as f:
+                    os.chmod(path, 0o600)
+                    f.write(content + '\n')
             else:
                 content = open(path).read().rstrip()
                 password = content
@@ -161,7 +160,7 @@ class LookupModule(LookupBase):
         paths = []
         basedir = self.get_basedir(vars)
         for path in C.get_config(C.p, C.DEFAULTS, 'lookup_file_paths', None, [], islist=True):
-            path = utils.path.unfrackpath(path)
+            path = os.path.join(utils.path.unfrackpath(path), 'files')
             if os.path.exists(path):
                 paths.append(path)
 
