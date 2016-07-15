@@ -1,5 +1,7 @@
 # ansible-plugins
 
+**NOTE: These lookup plugins are compatible with Ansible 1.9 and lower versions**
+
 Custom modules for ansible.
 
 This repository contains plugins that override file, first_found, found_files, and vars_files plugins with 
