@@ -11,13 +11,13 @@ from ansible import constants as C
 from ansible.plugins.lookup import LookupBase
 
 class LookupModule(LookupBase):
-    def run(self, terms, inject=None, **kwargs):
+    def run(self, terms, variables=None, **kwargs):
         ret = []
 
         if isinstance(terms, basestring):
             terms = [terms]
 
-        paths = self.get_paths(inject)
+        paths = self.get_paths(variables)
         for term in terms:
             for path in paths:
                 path = os.path.abspath(path, 'files', term)
