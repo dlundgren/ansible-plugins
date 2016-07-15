@@ -4,13 +4,30 @@
 # For each item if the path exists along the regular paths then the first found entry will be returned.
 # This operates differently from the file or found-file plugins as it is not an error if the file is not found.
 
-from ansible import constants as C
-from ansible import utils
 import os
+import codecs
 
-class LookupModule(object):
-    def __init__(self, basedir=None, **kwargs):
-        self.basedir = basedir
+from ansible import utils
+from ansible import constants as C
+from ansible.errors import AnsibleError
+from ansible.plugins.lookup import LookupBase
+
+class LookupModule(LookupBase):
+    def run(self, terms, variables=None, **kwargs):
+        ret = []
+
+        if isinstance(terms, basestring):
+            terms = [terms]
+
+        paths = self.get_paths(inject)
+        for term in terms:
+            for path in paths:
+                path = os.path.abspath(os.path.join(path, "vars", term))
+                if os.path.exists(path):
+                    ret.append(path)
+                    break
+
+        return ret
 
     def get_paths(self, inject):
         paths = []
@@ -30,18 +47,3 @@ class LookupModule(object):
 
         return paths
 
-    def run(self, terms, inject=None, **kwargs):
-        ret = []
-
-        if isinstance(terms, basestring):
-            terms = [terms]
-
-        paths = self.get_paths(inject)
-        for term in terms:
-            for path in paths:
-                path = os.path.abspath(os.path.join(path, "vars", term))
-                if os.path.exists(path):
-                    ret.append(path)
-                    break
-
-        return ret

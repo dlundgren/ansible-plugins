@@ -6,48 +6,28 @@
 # This will put the content of the found file into the items data
 #
 
+import os
+
+from ansible import utils
 from ansible import constants as C
-from ansible import utils, errors
+from ansible.plugins.lookup import LookupBase
 from ansible.utils import template
 
-import os
-import codecs
 
-class LookupModule(object):
-    def __init__(self, basedir=None, **kwargs):
-        self.basedir = basedir
-
-    def get_paths(self, inject):
-        paths = []
-
-        paths.append(utils.path_dwim(self.basedir, ''))
-
-        if '_original_file' in inject:
-            paths.append(utils.path_dwim_relative(inject['_original_file'], '', '', self.basedir, check=False))
-
-        if 'playbook_dir' in inject:
-            paths.append(inject['playbook_dir'])
-
-        for path in C.get_config(C.p, C.DEFAULTS, 'lookup_file_paths', None, [], islist=True):
-            path = utils.unfrackpath(path)
-            if os.path.exists(path):
-                paths.append(path)
-
-        return paths
-
-    def run(self, terms, inject=None, **kwargs):
+class LookupModule(LookupBase):
+    def run(self, terms, variables=None, **kwargs):
         ret = []
         for item in terms['items']:
-            content = self.load_file_content(template.template_from_string('', terms['name'], {'item':item}), inject)
+            content = self.load_file_content(template.template_from_string('', terms['name'], {'item':item}), variables)
             if content:
                 item[terms['key']] = content;
                 ret.append(item)
 
         return ret
 
-    def load_file_content(self, file, inject):
+    def load_file_content(self, file, vars):
         ret = None
-        for path in self.get_paths(inject):
+        for path in self.get_paths(vars):
             path = os.path.join(path, 'files', file)
             if os.path.exists(path):
                 with open (path, "r") as myfile:
@@ -55,3 +35,26 @@ class LookupModule(object):
                 break
 
         return ret
+
+    def get_paths(self, vars):
+        paths = []
+        basedir = self.get_basedir(vars)
+
+        paths.append(self._loader.path_dwim(basedir))
+
+        if '_original_file' in vars:
+            paths.append(self._loader.path_dwim_relative(basedir, '', vars['_original_file']))
+
+        if 'playbook_dir' in vars:
+            paths.append(vars['playbook_dir'])
+
+
+        for path in C.get_config(C.p, C.DEFAULTS, 'lookup_file_paths', None, [], islist=True):
+            path = utils.path.unfrackpath(path)
+            if os.path.exists(path):
+                paths.append(path)
+
+        unq = []
+        [unq.append(i) for i in paths if not unq.count(i)]
+
+        return unq

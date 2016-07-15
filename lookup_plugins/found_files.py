@@ -5,23 +5,22 @@
 
 # This will return a list of files that found out of those passed in
 
-from ansible import constants as C
-from ansible import utils, errors
 import os
 
-class LookupModule(object):
-    def __init__(self, basedir=None, **kwargs):
-        self.basedir = basedir
+from ansible import utils
+from ansible import constants as C
+from ansible.plugins.lookup import LookupBase
 
-    def run(self, terms, inject=None, **kwargs):
-        terms = utils.listify_lookup_plugin_terms(terms, self.basedir, inject)
+class LookupModule(LookupBase):
+
+    def run(self, terms, variables=None, **kwargs):
         ret = []
 
         if not isinstance(terms, list):
             terms = [terms]
 
         for term in terms:
-            for path in self.get_paths(inject):
+            for path in self.get_paths(variables):
                 path = os.path.join(path, 'files', term)
                 if os.path.exists(path):
                     ret.append(path)
@@ -29,21 +28,21 @@ class LookupModule(object):
 
         return ret
 
-    def get_paths(self, inject):
+    def get_paths(self, vars):
         paths = []
-
+        basedir = self.get_basedir(vars)
         for path in C.get_config(C.p, C.DEFAULTS, 'lookup_file_paths', None, [], islist=True):
-            path = utils.unfrackpath(path)
+            path = utils.path.unfrackpath(path)
             if os.path.exists(path):
                 paths.append(path)
 
-        if '_original_file' in inject:
-            paths.append(utils.path_dwim_relative(inject['_original_file'], '', '', self.basedir, check=False))
+        if '_original_file' in vars:
+            paths.append(self._loader.path_dwim_relative(basedir, '', vars['_original_file']))
 
-        if 'playbook_dir' in inject:
-            paths.append(inject['playbook_dir'])
+        if 'playbook_dir' in vars:
+            paths.append(vars['playbook_dir'])
 
-        paths.append(utils.path_dwim(self.basedir, ''))
+        paths.append(self._loader.path_dwim(basedir))
 
         unq = []
         [unq.append(i) for i in paths if not unq.count(i)]

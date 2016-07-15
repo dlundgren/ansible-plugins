@@ -4,23 +4,16 @@
 # For each item if the path exists along the regular paths then the first found entry will be returned.
 # This operates differently from the file or found-file plugins as it is not an error if the file is not found.
 
-from ansible import constants as C
-from ansible import utils
 import os
 
-class LookupModule(object):
-    def __init__(self, basedir=None, **kwargs):
-        self.basedir = basedir
+from ansible import utils
+from ansible import constants as C
+from ansible.plugins.lookup import LookupBase
 
-    def run(self, terms, inject=None, **kwargs):
-
-        terms = utils.listify_lookup_plugin_terms(terms, self.basedir, inject)
+class LookupModule(LookupBase):
+    def run(self, terms, variables=None, **kwargs):
         ret = []
-
-        if not isinstance(terms, list):
-            terms = [terms]
-
-        paths = self.get_paths(inject)
+        paths = self.get_paths(variables)
         for term in terms:
             for path in paths:
                 path = os.path.abspath(os.path.join(path, "vars", term))
@@ -29,21 +22,21 @@ class LookupModule(object):
                     break
         return ret
 
-    def get_paths(self, inject):
+    def get_paths(self, vars):
         paths = []
-
+        basedir = self.get_basedir(vars)
         for path in C.get_config(C.p, C.DEFAULTS, 'lookup_file_paths', None, [], islist=True):
-            path = utils.unfrackpath(path)
+            path = utils.path.unfrackpath(path)
             if os.path.exists(path):
                 paths.append(path)
 
-        if '_original_file' in inject:
-            paths.append(utils.path_dwim_relative(inject['_original_file'], '', '', self.basedir, check=False))
+        if '_original_file' in vars:
+            paths.append(self._loader.path_dwim_relative(basedir, '', vars['_original_file']))
 
-        if 'playbook_dir' in inject:
-            paths.append(inject['playbook_dir'])
+        if 'playbook_dir' in vars:
+            paths.append(vars['playbook_dir'])
 
-        paths.append(utils.path_dwim(self.basedir, ''))
+        paths.append(self._loader.path_dwim(basedir))
 
         unq = []
         [unq.append(i) for i in paths if not unq.count(i)]

@@ -5,26 +5,21 @@
 
 # For each item will find the first file and return the path
 
-from ansible import constants as C
-from ansible import utils, errors
 import os
-import codecs
 
+from ansible import utils
+from ansible import constants as C
+from ansible.errors import AnsibleError
+from ansible.plugins.lookup import LookupBase
 
-class LookupModule(object):
-    def __init__(self, basedir=None, **kwargs):
-        self.basedir = basedir
-
-    def run(self, terms, inject=None, **kwargs):
-
-        terms = utils.listify_lookup_plugin_terms(terms, self.basedir, inject)
+class LookupModule(LookupBase):
+    def run(self, terms, variables=None, **kwargs):
         anydict = False
         skip = False
 
         for term in terms:
             if isinstance(term, dict):
                 anydict = True
-
                 total_search = []
 
         if anydict:
@@ -60,7 +55,7 @@ class LookupModule(object):
         else:
             total_search = terms
 
-        paths = self.get_paths(inject)
+        paths = self.get_paths(variables)
         for fn in total_search:
             for path in paths:
                 path = os.path.join(path, fn)
@@ -72,26 +67,24 @@ class LookupModule(object):
             else:
                 return [None]
 
-    def get_paths(self, inject):
+    def get_paths(self, vars):
         paths = []
-
+        basedir = self.get_basedir(vars)
         for path in C.get_config(C.p, C.DEFAULTS, 'lookup_file_paths', None, [], islist=True):
-            path = utils.unfrackpath(path)
+            path = utils.path.unfrackpath(path)
             if os.path.exists(path):
                 paths.append(path)
 
-        if '_original_file' in inject:
-            # check the templates and vars directories too,
-            # if they exist
+        if '_original_file' in vars:
             for roledir in ('templates', 'vars'):
-                path = utils.path_dwim(self.basedir, os.path.join(self.basedir, '..', roledir))
+                path = utils.path.path_dwim(self.basedir, os.path.join(self.basedir, '..', roledir))
                 if os.path.exists(path):
                     paths.append(path)
 
-        if 'playbook_dir' in inject:
-            paths.append(inject['playbook_dir'])
+        if 'playbook_dir' in vars:
+            paths.append(vars['playbook_dir'])
 
-        paths.append(utils.path_dwim(self.basedir, ''))
+        paths.append(self._loader.path_dwim(basedir))
 
         unq = []
         [unq.append(i) for i in paths if not unq.count(i)]

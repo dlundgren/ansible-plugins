@@ -1,83 +1,98 @@
-from ansible import utils, errors
+# (c) 2012, Daniel Hokka Zakrisson <daniel@hozac.com>
+# (c) 2013, Javier Candeira <javier@candeira.com>
+# (c) 2013, Maykel Moya <mmoya@speedyrails.com>
+# (c) 2016, David Lundgren <dlundgren@syberisle.net>
+#
+# This file is part of Ansible
+#
+# Ansible is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Ansible is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Ansible.  If not, see <http://www.gnu.org/licenses/>.
+#
+# MODIFIED TO ALLOW CUSTOM PATHS
+#
 import os
-import errno
-from ansible import constants as C
 from string import ascii_letters, digits
 import string
 import random
 
+from ansible import utils
+from ansible import constants as C
+from ansible.errors import AnsibleError
+from ansible.plugins.lookup import LookupBase
+from ansible.parsing.splitter import parse_kv
 
-class LookupModule(object):
+DEFAULT_LENGTH = 20
+VALID_PARAMS = frozenset(('length', 'encrypt', 'chars'))
 
-    LENGTH = 20
+def _parse_parameters(term):
+    # Hacky parsing of params
+    # See https://github.com/ansible/ansible-modules-core/issues/1968#issuecomment-136842156
+    # and the first_found lookup For how we want to fix this later
+    first_split = term.split(' ', 1)
+    if len(first_split) <= 1:
+        # Only a single argument given, therefore it's a path
+        relpath = term
+        params = dict()
+    else:
+        relpath = first_split[0]
+        params = parse_kv(first_split[1])
+        if '_raw_params' in params:
+            # Spaces in the path?
+            relpath = ' '.join((relpath, params['_raw_params']))
+            del params['_raw_params']
 
-    def __init__(self, length=None, encrypt=None, basedir=None, **kwargs):
-        self.basedir = basedir
+            # Check that we parsed the params correctly
+            if not term.startswith(relpath):
+                # Likely, the user had a non parameter following a parameter.
+                # Reject this as a user typo
+                raise AnsibleError('Unrecognized value after key=value parameters given to password lookup')
+        # No _raw_params means we already found the complete path when
+        # we split it initially
 
-    def random_salt(self):
-        salt_chars = ascii_letters + digits + './'
-        return utils.random_password(length=8, chars=salt_chars)
+    # Check for invalid parameters.  Probably a user typo
+    invalid_params = frozenset(params.keys()).difference(VALID_PARAMS)
+    if invalid_params:
+        raise AnsibleError('Unrecognized parameter(s) given to password lookup: %s' % ', '.join(invalid_params))
 
-    def get_paths(self, inject):
-        paths = []
+    # Set defaults
+    params['length'] = int(params.get('length', DEFAULT_LENGTH))
+    params['encrypt'] = params.get('encrypt', None)
 
-        for path in C.get_config(C.p, C.DEFAULTS, 'lookup_file_paths', None, [], islist=True):
-            path = os.path.join(utils.unfrackpath(path), 'files')
-            if os.path.exists(path):
-                paths.append(path)
+    params['chars'] = params.get('chars', None)
+    if params['chars']:
+        tmp_chars = []
+        if ',,' in params['chars']:
+            tmp_chars.append(u',')
+        tmp_chars.extend(c for c in params['chars'].replace(',,', ',').split(',') if c)
+        params['chars'] = tmp_chars
+    else:
+        # Default chars for password
+        params['chars'] = ['ascii_letters', 'digits', ".,:-_"]
 
-        if 'playbook_dir' in inject:
-            paths.append(inject['playbook_dir'])
+    return relpath, params
 
-        unq = []
-        [unq.append(i) for i in paths if not unq.count(i)]
-
-        return unq
-
-    def run(self, terms, inject=None, **kwargs):
-
-        terms = utils.listify_lookup_plugin_terms(terms, self.basedir, inject)
-
+class LookupModule(LookupBase):
+    def run(self, terms, variables=None, **kwargs):
         ret = []
 
         for term in terms:
-            # you can't have escaped spaces in yor pathname
-            params = term.split()
-            relpath = params[0]
-
-            paramvals = {
-                'length': LookupModule.LENGTH,
-                'encrypt': None,
-                'chars': ['ascii_letters','digits',".,:-_"],
-            }
-
-            # get non-default parameters if specified
-            try:
-                for param in params[1:]:
-                    name, value = param.split('=')
-                    assert(name in paramvals)
-                    if name == 'length':
-                        paramvals[name] = int(value)
-                    elif name == 'chars':
-                        use_chars=[]
-                        if ",," in value:
-                            use_chars.append(',')
-                        use_chars.extend(value.replace(',,',',').split(','))
-                        paramvals['chars'] = use_chars
-                    else:
-                        paramvals[name] = value
-            except (ValueError, AssertionError), e:
-                raise errors.AnsibleError(e)
-
-            length  = paramvals['length']
-            encrypt = paramvals['encrypt']
-            use_chars = paramvals['chars']
+            relpath, params = _parse_parameters(term)
 
             # get password or create it if file doesn't exist
-            paths = self.get_paths(inject)
+            paths = self.get_paths(variables)
+            paths.append(self._loader.path_dwim(relpath))
             foundPath = None
             for path in paths:
-                path = utils.path_dwim(path, relpath)
                 if os.path.exists(path):
                     foundPath = path
                     break
@@ -88,48 +103,77 @@ class LookupModule(object):
                     pathdir = os.path.dirname(path)
                     if not os.path.isdir(pathdir):
                         try:
-                            os.makedirs(pathdir, mode=0700)
+                            os.makedirs(pathdir, mode=0o700)
                         except OSError, e:
-                            raise errors.AnsibleError("cannot create the path for the password lookup: %s (error was %s)" % (pathdir, str(e)))
+                            raise AnsibleError("cannot create the path for the password lookup: %s (error was %s)" % (pathdir, str(e)))
 
                     chars = "".join([getattr(string,c,c) for c in use_chars]).replace('"','').replace("'",'')
                     password = ''.join(random.choice(chars) for _ in range(length))
 
-                    if encrypt is not None:
+                    if params['encrypt'] is not None:
                         salt = self.random_salt()
                         content = '%s salt=%s' % (password, salt)
                     else:
                         content = password
                     with open(path, 'w') as f:
-                        os.chmod(path, 0600)
+                        os.chmod(path, 0o600)
                         f.write(content + '\n')
             else:
                 content = open(path).read().rstrip()
-                sep = content.find(' ')
+                password = content
+                salt = None
 
-                if sep >= 0:
-                    password = content[:sep]
-                    salt = content[sep+1:].split('=')[1]
+                try:
+                    sep = content.rindex(' salt=')
+                except ValueError:
+                    # No salt
+                    pass
                 else:
-                    password = content
-                    salt = None
+                    salt = password[sep + len(' salt='):]
+                    password = content[:sep]
 
                 # crypt requested, add salt if missing
-                if (encrypt is not None and not salt):
+                if params['encrypt'] is not None and salt is None:
+                    # crypt requested, add salt if missing
                     salt = self.random_salt()
                     content = '%s salt=%s' % (password, salt)
                     with open(path, 'w') as f:
-                        os.chmod(path, 0600)
+                        os.chmod(path, 0o600)
                         f.write(content + '\n')
-                # crypt not requested, remove salt if present
-                elif (encrypt is None and salt):
+                elif params['encrypt'] is None and salt:
                     with open(path, 'w') as f:
-                        os.chmod(path, 0600)
+                        os.chmod(path, 0o600)
                         f.write(password + '\n')
 
-            if encrypt:
-                password = utils.do_encrypt(password, encrypt, salt=salt)
+            if params['encrypt']:
+                password = utils.do_encrypt(password, params['encrypt'], salt=salt)
 
             ret.append(password)
 
         return ret
+
+
+    def random_salt(self):
+        salt_chars = ascii_letters + digits + './'
+        return utils.random_password(length=8, chars=salt_chars)
+
+    def get_paths(self, vars):
+        paths = []
+        basedir = self.get_basedir(vars)
+        for path in C.get_config(C.p, C.DEFAULTS, 'lookup_file_paths', None, [], islist=True):
+            path = utils.path.unfrackpath(path)
+            if os.path.exists(path):
+                paths.append(path)
+
+        if '_original_file' in vars:
+            paths.append(self._loader.path_dwim_relative(basedir, '', vars['_original_file']))
+
+        if 'playbook_dir' in vars:
+            paths.append(vars['playbook_dir'])
+
+        paths.append(self._loader.path_dwim(basedir))
+
+        unq = []
+        [unq.append(i) for i in paths if not unq.count(i)]
+
+        return unq
