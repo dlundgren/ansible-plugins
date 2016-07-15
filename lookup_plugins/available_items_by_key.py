@@ -18,12 +18,12 @@
 #   with_available_items:
 #     items: "{{ users }}"
 #     key: password
-#
 
-from ansible.plugins.lookup import LookupBase
+class LookupModule(object):
+    def __init__(self, basedir=None, **kwargs):
+        self.basedir = basedir
 
-class LookupModule(LookupBase):
-    def run(self, terms, variables=None, **kwargs):
+    def run(self, terms, inject=None, **kwargs):
         ret = []
 
         key = terms['key']
