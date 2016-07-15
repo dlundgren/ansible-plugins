@@ -1,5 +1,5 @@
 # Ansible lookup plugin for getting the content of the first available file
-# (c) 2015, David Lundgren <dlundgren@syberisle.net>
+# (c) 2015,2016 David Lundgren <dlundgren@syberisle.net>
 
 # For each item will find the first file and return it's content
 

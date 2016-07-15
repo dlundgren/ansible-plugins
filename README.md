@@ -11,6 +11,12 @@ You can control this by setting lookup_file_paths or lookup_vars_paths in your a
 
 # Lookup plugins
 
+### custom_password
+
+This is a modified version of the password lookup plugin from Ansible that allows custom paths to be used.
+
+This is the only included file licensed under the GPLv3.
+
 ### available_file_content
 
 Use this when you need the content out of the first available file in a list.

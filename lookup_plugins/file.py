@@ -1,5 +1,5 @@
 # Ansible lookup plugin for getting the content of the file
-# (c) 2015, David Lundgren <dlundgren@syberisle.net>
+# (c) 2015,2016 David Lundgren <dlundgren@syberisle.net>
 #
 # MIT License
 

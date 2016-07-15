@@ -1,5 +1,5 @@
 # Ansible lookup plugin for getting the first available file
-# (c) 2015, David Lundgren <dlundgren@syberisle.net>
+# (c) 2015,2016 David Lundgren <dlundgren@syberisle.net>
 
 # For each item if the path exists along the regular paths then the first found entry will used.
 #
