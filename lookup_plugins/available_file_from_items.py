@@ -22,7 +22,6 @@ import os
 
 from ansible import utils
 from ansible import constants as C
-from ansible.utils import template
 from ansible.plugins.lookup import LookupBase
 
 class LookupModule(LookupBase):
@@ -30,7 +29,8 @@ class LookupModule(LookupBase):
         ret = []
 
         for item in terms['items']:
-            content = self.resolve_available_file_path(template.template_from_string('', terms['name'], {'item':item}), variables)
+            self._templar.set_available_variables({'item':item})
+            content = self.resolve_available_file_path(self._templar.template(terms['name']), variables)
             if content:
                 item[terms['key']] = content
                 ret.append(item)
