@@ -25,6 +25,7 @@ Use this when you need the content out of the first available file in a list.
 
 This acts similarly to available_file_content only inserts the content into the item when found
 
+**NOTE:** The way you add template data in the `name` field has changed in Ansible 2.x. You now have to escape the {{ and }}
 ```yaml
 - name: Add SSH keys
   authorized_key:
@@ -35,7 +36,7 @@ This acts similarly to available_file_content only inserts the content into the 
     path: '/home/{{ item.username }}/.ssh/authorized_keys'
   with_available_file_from_items:
     items: "{{ users }}"
-    name: files/ssh/keys/{{ item.username }}.pubkeys
+    name: files/ssh/keys/{{ '{{' }} item.username {{ '}}' }}.pubkeys
     key: pubkey
 ```
 
@@ -48,6 +49,8 @@ filled with the content of the given file
 
 Given a list of items it will attempt to find a file in the regular list of paths that is similar to the name
 
+**NOTE:** The way you add template data in the `name` field has changed in Ansible 2.x. You now have to escape the {{ and }}
+
 ```yaml
 - name: Add SSH keys
   authorized_key:
@@ -58,7 +61,7 @@ Given a list of items it will attempt to find a file in the regular list of path
     path: '/home/{{ item.username }}/.ssh/authorized_keys'
   with_available_file_from_items:
     items: "{{ users }}"
-    name: files/ssh/keys/{{ item.username }}.pubkeys
+    name: files/ssh/keys/{{ '{{' }} item.username {{ '}}' }}.pubkeys
     key: pubkey
 ```
 
