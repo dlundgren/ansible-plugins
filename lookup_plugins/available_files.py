@@ -39,7 +39,14 @@ class LookupModule(LookupBase):
         if 'playbook_dir' in vars:
             paths.append(vars['playbook_dir'])
 
-        for path in C.get_config(C.p, C.DEFAULTS, 'lookup_file_paths', None, [], islist=True):
+        try:
+            # Ansible 2.3
+            lookupPaths = C.get_config(C.p, C.DEFAULTS, 'lookup_file_paths', None, [], value_type='list')
+        except TypeError:
+            # Ansible 2.2.x and below
+            lookupPaths = C.get_config(C.p, C.DEFAULTS, 'lookup_file_paths', None, [], islist=True)
+
+        for path in lookupPaths:
             path = utils.path.unfrackpath(path)
             if os.path.exists(path):
                 paths.append(path)
