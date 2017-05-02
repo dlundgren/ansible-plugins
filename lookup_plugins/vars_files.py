@@ -32,7 +32,7 @@ class LookupModule(object):
     def get_paths(self, inject):
         paths = []
 
-        for path in C.get_config(C.p, C.DEFAULTS, 'lookup_file_paths', None, [], islist=True):
+        for path in C.get_config(C.p, C.DEFAULTS, 'lookup_vars_paths', None, [], islist=True):
             path = utils.unfrackpath(path)
             if os.path.exists(path):
                 paths.append(path)
