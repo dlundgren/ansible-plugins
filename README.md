@@ -9,6 +9,48 @@ ones that allow to look int custom locations
 
 You can control this by setting lookup_file_paths or lookup_vars_paths in your ansible.cfg
 
+# Modules
+
+### postconf
+
+Add or remove postfix configuration
+
+This uses Postfix's postconf binary to make changes to the configuration
+
+```yaml
+- postconf:
+    name: relayhost
+    value: "relay.example.com"
+```
+
+#### Defaults
+
+```yaml
+state: present
+```
+
+### sasldb
+
+Interact with sasldb files
+
+This uses saslpasswd2 and sasldblistusers2 to change users in a sasl file
+
+```yaml
+- sasldb:
+    dest: /var/spool/postfix/etc/sasldb2
+    name: test
+    realm: relay.example.com
+    password: testpass
+```
+
+#### Defaults
+
+```yaml
+dest: /etc/sasldb2
+realm: <hostname>
+state: present
+```
+
 # Lookup plugins
 
 ### custom_password
