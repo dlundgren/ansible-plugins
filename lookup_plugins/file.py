@@ -4,6 +4,19 @@
 # MIT License
 
 # For each item will find the first file and return it's content
+DOCUMENTATION = """
+    author: David Lundgren
+    lookup: file
+    options:
+        lookup_file_paths:
+            type: list
+            default: []
+            ini:
+                - key: lookup_file_paths
+                  section: defaults
+            yaml:
+                key: defaults.lookup_file_paths
+"""
 
 import os
 import codecs
@@ -12,6 +25,18 @@ from ansible import utils
 from ansible import constants as C
 from ansible.errors import AnsibleError
 from ansible.plugins.lookup import LookupBase
+
+# ansible 2.4
+try:
+    from ansible.parsing.plugin_docs import read_docstring
+
+    # load the definitions
+    dstring = read_docstring(__file__, verbose = False, ignore_errors = False)
+    if dstring.get('doc', False):
+        if 'options' in dstring['doc'] and isinstance(dstring['doc']['options'], dict):
+            C.config.initialize_plugin_configuration_definitions('lookup', 'file', dstring['doc']['options'])
+except:
+    None
 
 class LookupModule(LookupBase):
     def run(self, terms, variables=None, **kwargs):
@@ -29,6 +54,9 @@ class LookupModule(LookupBase):
         basedir = self.get_basedir(vars)
 
         try:
+            # Ansible 2.4
+            lookupPaths = C.config.get_config_value('lookup_file_paths', None, 'lookup', 'file')
+        except AttributeError:
             # Ansible 2.3
             lookupPaths = C.get_config(C.p, C.DEFAULTS, 'lookup_file_paths', None, [], value_type='list')
         except TypeError:

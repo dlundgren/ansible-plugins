@@ -20,6 +20,19 @@
 #
 # MODIFIED TO ALLOW CUSTOM PATHS
 #
+DOCUMENTATION = """
+    author: David Lundgren
+    lookup: custom_password
+    options:
+        lookup_file_paths:
+            type: list
+            default: []
+            ini:
+                - key: lookup_file_paths
+                  section: defaults
+            yaml:
+                key: defaults.lookup_file_paths
+"""
 import os
 from string import ascii_letters, digits
 import string
@@ -30,6 +43,18 @@ from ansible import constants as C
 from ansible.errors import AnsibleError
 from ansible.plugins.lookup import LookupBase
 from ansible.parsing.splitter import parse_kv
+
+# ansible 2.4
+try:
+    from ansible.parsing.plugin_docs import read_docstring
+
+    # load the definitions
+    dstring = read_docstring(__file__, verbose = False, ignore_errors = False)
+    if dstring.get('doc', False):
+        if 'options' in dstring['doc'] and isinstance(dstring['doc']['options'], dict):
+            C.config.initialize_plugin_configuration_definitions('lookup', 'custom_password', dstring['doc']['options'])
+except:
+    None
 
 DEFAULT_LENGTH = 20
 VALID_PARAMS = frozenset(('length', 'encrypt', 'chars'))
@@ -147,6 +172,8 @@ class LookupModule(LookupBase):
             if params['encrypt']:
                 password = utils.do_encrypt(password, params['encrypt'], salt=salt)
 
+
+
             ret.append(password)
 
         return ret
@@ -160,6 +187,9 @@ class LookupModule(LookupBase):
         paths = []
         basedir = self.get_basedir(vars)
         try:
+            # Ansible 2.4
+            lookupPaths = C.config.get_config_value('lookup_file_paths', None, 'lookup', 'custom_password')
+        except AttributeError:
             # Ansible 2.3
             lookupPaths = C.get_config(C.p, C.DEFAULTS, 'lookup_file_paths', None, [], value_type='list')
         except TypeError:

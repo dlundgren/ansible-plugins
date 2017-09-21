@@ -4,12 +4,36 @@
 # MIT License
 
 # This will return a list of files that found out of those passed in
-
+DOCUMENTATION = """
+    author: David Lundgren
+    lookup: found_files
+    options:
+        lookup_file_paths:
+            type: list
+            default: []
+            ini:
+                - key: lookup_file_paths
+                  section: defaults
+            yaml:
+                key: defaults.lookup_file_paths
+"""
 import os
 
 from ansible import utils
 from ansible import constants as C
 from ansible.plugins.lookup import LookupBase
+
+# ansible 2.4
+try:
+    from ansible.parsing.plugin_docs import read_docstring
+
+    # load the definitions
+    dstring = read_docstring(__file__, verbose = False, ignore_errors = False)
+    if dstring.get('doc', False):
+        if 'options' in dstring['doc'] and isinstance(dstring['doc']['options'], dict):
+            C.config.initialize_plugin_configuration_definitions('lookup', 'found_files', dstring['doc']['options'])
+except:
+    None
 
 class LookupModule(LookupBase):
 
@@ -32,6 +56,9 @@ class LookupModule(LookupBase):
         paths = []
         basedir = self.get_basedir(vars)
         try:
+            # Ansible 2.4
+            lookupPaths = C.config.get_config_value('lookup_file_paths', None, 'lookup', 'found_files')
+        except AttributeError:
             # Ansible 2.3
             lookupPaths = C.get_config(C.p, C.DEFAULTS, 'lookup_file_paths', None, [], value_type='list')
         except TypeError:

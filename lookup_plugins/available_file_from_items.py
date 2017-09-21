@@ -17,12 +17,36 @@
 #
 # This will look in the {role}/files/ssh/keys/, {playbook}/files/ssh/keys/ folders for the {username}.pubkeys file.
 # If the file is not found then the user is not returned in the list of items to be used.
-
+DOCUMENTATION = """
+    author: David Lundgren
+    lookup: available_file_from_items
+    options:
+        lookup_file_paths:
+            type: list
+            default: []
+            ini:
+                - key: lookup_file_paths
+                  section: defaults
+            yaml:
+                key: defaults.lookup_file_paths
+"""
 import os
 
 from ansible import utils
 from ansible import constants as C
 from ansible.plugins.lookup import LookupBase
+
+# ansible 2.4
+try:
+    from ansible.parsing.plugin_docs import read_docstring
+
+    # load the definitions
+    dstring = read_docstring(__file__, verbose = False, ignore_errors = False)
+    if dstring.get('doc', False):
+        if 'options' in dstring['doc'] and isinstance(dstring['doc']['options'], dict):
+            C.config.initialize_plugin_configuration_definitions('lookup', 'available_file_from_items', dstring['doc']['options'])
+except:
+    None
 
 class LookupModule(LookupBase):
     def run(self, terms, variables=None, **kwargs):
@@ -30,7 +54,7 @@ class LookupModule(LookupBase):
 
         for item in terms['items']:
             self._templar.set_available_variables({'item':item})
-            content = self.resolve_available_file_path(self._templar.template(terms['name']), variables)
+            content = self.resolve_available_file_path(self._templar.template(terms['name'], preserve_trailing_newlines=True), variables)
             if content:
                 item[terms['key']] = content
                 ret.append(item)
@@ -42,6 +66,9 @@ class LookupModule(LookupBase):
         basedir = self.get_basedir(vars)
 
         try:
+            # Ansible 2.4
+            lookupPaths = C.config.get_config_value('lookup_file_paths', None, 'lookup', 'available_file_from_items')
+        except AttributeError:
             # Ansible 2.3
             lookupPaths = C.get_config(C.p, C.DEFAULTS, 'lookup_file_paths', None, [], value_type='list')
         except TypeError:
@@ -68,7 +95,6 @@ class LookupModule(LookupBase):
 
     def resolve_available_file_path(self, file, vars):
         ret = None
-
         for path in self.get_paths(vars):
             path = os.path.join(path, 'files', file)
             if os.path.exists(path):
