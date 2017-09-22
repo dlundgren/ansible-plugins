@@ -63,7 +63,6 @@ class LookupModule(LookupBase):
 
                 # rip off the .yml and check for a directory then load that
                 tmpPath = os.path.abspath(os.path.join(path, "vars", os.path.splitext(term)[0]))
-                print tmpPath
                 if os.path.exists(tmpPath):
                     self.add_path(ret, tmpPath)
                     break
@@ -83,7 +82,6 @@ class LookupModule(LookupBase):
             # Ansible 2.2.x and below
             lookupPaths = C.get_config(C.p, C.DEFAULTS, 'lookup_vars_paths', None, [], islist=True)
 
-        print lookupPaths
         for path in lookupPaths:
             path = utils.path.unfrackpath(path)
             if os.path.exists(path):
