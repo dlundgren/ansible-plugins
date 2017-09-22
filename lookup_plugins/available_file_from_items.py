@@ -41,7 +41,7 @@ try:
     from ansible.parsing.plugin_docs import read_docstring
 
     # load the definitions
-    dstring = read_docstring(__file__, verbose = False, ignore_errors = False)
+    dstring = read_docstring(__file__.replace('.pyc', '.py'), verbose = False, ignore_errors = False)
     if dstring.get('doc', False):
         if 'options' in dstring['doc'] and isinstance(dstring['doc']['options'], dict):
             C.config.initialize_plugin_configuration_definitions('lookup', 'available_file_from_items', dstring['doc']['options'])
