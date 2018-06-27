@@ -119,7 +119,7 @@ def main():
         argument_spec       = dict(
             dest  = dict(default='/etc/sasldb2'),
             name  = dict(required=True),
-            password = dict(default=''),
+            password = dict(default='', no_log=True),
             realm = dict(default=''),
             state = dict(default='present', choices=['present','absent'])
         ),
