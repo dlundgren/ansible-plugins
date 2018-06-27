@@ -107,7 +107,7 @@ class sasldb(object):
             return
 
         self.module.run_command(' '.join([self.passwd, '-d', '-u', self.realm, self.name]))
-        if self.exists():
+        if not self.exists():
             self.changed = True
             return True
         else:
@@ -117,19 +117,19 @@ def main():
     module = AnsibleModule(
         supports_check_mode = True,
         argument_spec       = dict(
-            dest  = dict(default='/etc/sasldb2'),
-            name  = dict(required=True),
-            password = dict(default=''),
-            realm = dict(default=''),
-            state = dict(default='present', choices=['present','absent'])
+            dest     = dict(type='path', default='/etc/sasldb2'),
+            name     = dict(type='str',  required=True),
+            password = dict(type='str',  default='', no_log=True),
+            realm    = dict(type='str',  default=''),
+            state    = dict(type='str',  default='present', choices=['present','absent'])
         ),
     )
 
     passwd = module.params.pop('password')
     name   = module.params.pop('name')
-    realm   = module.params.pop('realm')
-    dest = module.params.pop('dest')
-    state   = module.params.pop('state')
+    realm  = module.params.pop('realm')
+    dest   = module.params.pop('dest')
+    state  = module.params.pop('state')
 
     if state == 'present' and passwd.strip() == "":
         raise ValueError("Password must be specified when creating users")
@@ -137,7 +137,7 @@ def main():
     result = {
         'dest'     : dest,
         'name'     : name,
-        'realm'     : realm,
+        'realm'    : realm,
         'password' : "NOT DISPLAYED",
         'state'    : state
     }
