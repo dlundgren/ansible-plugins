@@ -20,7 +20,6 @@ You can control this by setting lookup_file_paths or lookup_vars_paths in your a
 ## Plugins
 
 - Lookup
-  - [available_file_content](docs/plugins/lookup/available_file_content.md)
   - [available_file_content_from_items](docs/plugins/lookup/available_file_content_from_items.md)
   - [available_file_from_items](docs/plugins/lookup/available_file_from_items.md)
   - [available_files](docs/plugins/lookup/available_files.md)
@@ -39,4 +38,4 @@ You can control this by setting lookup_file_paths or lookup_vars_paths in your a
 
 ### available_file_content
 
-Use this when you need the content out of the first available file in a list.
+
