@@ -55,14 +55,14 @@ class LookupModule(LookupBase):
                     skip = utils.boolean(term.get('skip', False))
 
                     filelist = files
-                    if isinstance(files, basestring):
+                    if isinstance(files, str):
                         files = files.replace(',', ' ')
                         files = files.replace(';', ' ')
                         filelist = files.split(' ')
 
                     pathlist = paths
                     if paths:
-                        if isinstance(paths, basestring):
+                        if isinstance(paths, str):
                             paths = paths.replace(',', ' ')
                             paths = paths.replace(':', ' ')
                             paths = paths.replace(';', ' ')

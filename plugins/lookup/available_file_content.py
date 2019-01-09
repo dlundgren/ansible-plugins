@@ -38,7 +38,7 @@ class LookupModule(LookupBase):
     def run(self, terms, variables=None, **kwargs):
         ret = []
 
-        if isinstance(terms, basestring):
+        if isinstance(terms, str):
             terms = [terms]
 
         for term in terms:
