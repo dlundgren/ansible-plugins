@@ -8,8 +8,6 @@ Adds or removes entries from an /etc/hosts formatted file
 
 ## Parameters
 
-## Options
-
 | Parameter | Choices/Defaults | Comments |
 | :-------- | :--------------- | :----- |
 | address   | | IP Adress of the host |
