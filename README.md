@@ -14,6 +14,7 @@ You can control this by setting lookup_file_paths or lookup_vars_paths in your a
 
 ## Modules
 
+- [etc_hosts](docs/modules/etc_hosts.md)
 - [postconf](docs/modules/postconf.md)
 - [sasldb](docs/modules/sasldb.md)
 
@@ -26,6 +27,8 @@ You can control this by setting lookup_file_paths or lookup_vars_paths in your a
   - [available_items_by_key](docs/plugins/lookup/available_items_by_key.md)
   - [available_vars_files](docs/plugins/lookup/available_vars_files.md)
   - [custom_password](docs/plugins/lookup/custom_password.md)
+  - [vars_dict_start_with](docs/plugins/lookup/vars_dict_start_with.md)
+  - [vars_start_with](docs/plugins/lookup/vars_start_with.md)
 - Lookup (overridden)
   - [file](docs/plugins/lookup/overridden.md)
   - [first_found](docs/plugins/lookup/overridden.md)
