@@ -1,12 +1,8 @@
 # Plugin :: lookup :: Overrides
 
-The core plugins don't allow you to specify alternative locations of files.
-
-These are modified versions that allow you to do so.
+These overrides to core plugins allow you to specify alternative file locations in the `ansible.cfg`.
 
 # Ansible configuration changes
-
-The following variables can be used from within `ansible.cfg`.
 
 These are comma separated lists.
 
