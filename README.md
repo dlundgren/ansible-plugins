@@ -37,8 +37,4 @@ You can control this by setting lookup_file_paths or lookup_vars_paths in your a
 - Callback
   - [updates_tracker](docs/plugins/callback-updates_tracker.md) 
 
-# Lookup plugins
-
-### available_file_content
-
 
