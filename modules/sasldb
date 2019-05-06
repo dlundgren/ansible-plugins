@@ -106,7 +106,7 @@ class sasldb(object):
             self.changed = True
             return
 
-        self.module.run_command(' '.join([self.passwd, '-d', '-u', self.realm, self.name]))
+        self.module.run_command(' '.join([self.passwd, '-f', self.dest, '-d', '-u', self.realm, self.name]))
         if not self.exists():
             self.changed = True
             return True
