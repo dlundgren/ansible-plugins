@@ -1,10 +1,5 @@
-# Ansible lookup plugin for looking up templated value of variables that start with a prefix
-#
 # (c) 2018 David Lundgren
-#
 # MIT
-#
-
 from __future__ import (absolute_import, division, print_function)
 
 __metaclass__ = type
@@ -29,6 +24,8 @@ DOCUMENTATION = """
 EXAMPLES = """
 - name: find several related variables
   debug: msg="{{ lookup('vars_starts_with', 'ansible_play') }}"
+- name: find several related variables excluding others
+  debug: msg="{{ lookup('vars_starts_with', 'ansible_play', '!ansible_play_never') }}"
 - name: alternate way to find some 'prefixed vars' in loop
   debug: msg="{{ lookup('vars', 'ansible_play_' + item) }}"
   loop:
@@ -50,6 +47,16 @@ from ansible.plugins.lookup import LookupBase
 
 class LookupModule(LookupBase):
 
+	def is_excluded(self, excludes, key):
+		if key in excludes:
+			return True
+
+		for term in excludes:
+			if key.startswith(term):
+				return True
+
+		return False
+
 	def run(self, terms, variables=None, **kwargs):
 		if variables is not None:
 			self._templar.set_available_variables(variables)
@@ -58,6 +65,12 @@ class LookupModule(LookupBase):
 		self.set_options(direct=kwargs)
 		default = self.get_option('default')
 
+		excludes = []
+		for idx,term in enumerate(terms):
+			if term.startswith('!'):
+				excludes.append(term[1:])
+				terms.pop(idx)
+
 		ret = []
 		for term in terms:
 			if not isinstance(term, string_types):
@@ -65,10 +78,10 @@ class LookupModule(LookupBase):
 
 			try:
 				for key in myvars:
-					if key.startswith(term):
+					if key.startswith(term) and not self.is_excluded(excludes, key):
 						ret.extend(self._templar.template(myvars[key], fail_on_undefined=True))
 				for key in myvars['hostvars'][myvars['inventory_hostname']]:
-					if key.startswith(term):
+					if key.startswith(term) and not self.is_excluded(excludes, key):
 						ret.extend(self._templar.template(myvars['hostvars'][myvars['inventory_hostname']][key], fail_on_undefined=True))
 			except AnsibleUndefinedVariable:
 				if default is not None:

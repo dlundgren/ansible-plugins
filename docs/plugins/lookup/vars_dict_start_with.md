@@ -4,6 +4,7 @@ Lookup templated value of variables that start with a prefix, and combine them a
 
 ```yaml
 test_dict: "{{ lookup('vars_start_with', 'test_dict_') | default([]) }}"
+test_no_where: "{{ lookup('vars_start_with', 'test_dict_', '!test_dict_somewhere') | default([]) }}"
 test_dict_something:
   something:
     - some where
@@ -19,6 +20,9 @@ test_dict:
     - some where
   somewhere:
     - some thing
+test_no_where:
+  something:
+    - some where
 ```
 
 This allows you to separate variables in group_vars, and then coalesce them in to a global variable.
