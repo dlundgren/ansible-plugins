@@ -1,0 +1,48 @@
+#!/usr/bin/python
+# coding: utf-8 -*-
+DOCUMENTATION = '''
+---
+module: ruby_facts
+short_description: Gathers other facts on the version of php that is installed
+requirements: []
+version_added: 2.7
+author: David Lundgren
+options:
+  var:
+    description:
+      - variable name that the results should be put in to
+    default: 'ruby_facts'
+description:
+    - Gathers ruby facts on the modules installed
+'''
+
+import os
+import re
+import json
+
+from ansible.module_utils.basic import *
+
+def main():
+    module = AnsibleModule(
+        supports_check_mode = False,
+        argument_spec = dict(
+            var = dict(
+                required = False,
+                default = 'ruby_facts',
+                type = 'str'
+            ),
+        )
+    )
+
+    # All this module does is grab some PHP information
+    php = module.get_bin_path('ruby', True)
+    (rc, out, err) = module.run_command('%s -r "echo json_encode(get_loaded_extensions());"' % (php))
+
+    outfacts = dict()
+    outfacts[module.params.get('var')] = dict(
+        modules=json.loads(out)
+    )
+    module.exit_json(ansible_facts = outfacts)
+
+if __name__ == '__main__':
+    main()

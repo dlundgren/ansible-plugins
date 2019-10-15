@@ -1,0 +1,302 @@
+#!/usr/bin/python
+# coding: utf-8 -*-
+DOCUMENTATION = '''
+---
+module: host_facts
+short_description: Gathers other facts on the system
+requirements: []
+version_added: 2.5
+author: David Lundgren
+options:
+  var:
+    description:
+      - variable name that the results should be put in to
+    default: 'host_facts'
+description:
+    - Gathers other facts on the system: languages, databases, web servers
+'''
+
+import os
+import re
+
+from ansible.module_utils.facts.namespace import PrefixFactNamespace
+from ansible.module_utils.basic import *
+
+class FactsBase(object):
+    COMMANDS = list()
+    DEFAULT_FIELDS = dict(
+        version=dict(
+            regex=r'^(.*)$',
+            group=1
+        )
+    )
+
+    def __init__(self, module):
+        self.module = module
+        self.facts = dict()
+        self.responses = None
+
+    def run(self, cmd):
+        return True
+
+    def get_run_field(self, name, field, alt):
+        if isinstance(self.COMMANDS[name], dict) and field in self.COMMANDS[name]:
+            return self.COMMANDS[name][field]
+
+        return alt
+
+    def get_cmd(self, name, alt):
+        if isinstance(self.COMMANDS[name], str) and self.COMMANDS[name] != '':
+            return self.COMMANDS[name]
+
+        return alt
+
+    def run_command(self, name, cmd):
+        run = "%s --version"
+        run = self.get_run_field(name, 'cmd', run)
+        run = self.get_cmd(name, run)
+
+        return self.module.run_command(run % cmd)
+
+    def parse_version(self, name, rc, out, err):
+        return self.parse_from_cmd(name, out)
+
+    def parse_from_cmd(self, name, val):
+        format = self.get_run_field(name, 'format', False)
+        if 'json' == format:
+            return json.loads(val)
+
+        fields = self.get_run_field(name, 'fields', self.DEFAULT_FIELDS)
+        return self.parser(val, fields)
+
+    def parser(self, val, fields):
+        data = dict()
+        for name in fields:
+            m = re.search(fields[name]['regex'], val)
+            if m:
+                data[name] = m.group(fields[name]['group'])
+
+        return data
+
+    def populate(self):
+        for name in self.COMMANDS:
+            cmd = self.get_run_field(name, 'search', name)
+            if isinstance(cmd, list):
+                for i in cmd:
+                    cmd = self.module.get_bin_path(i)
+                    if cmd:
+                        break
+            else:
+                cmd = self.module.get_bin_path(cmd)
+
+            if cmd:
+                method = "parse_%s" % name
+                if not hasattr(self, method):
+                    method = 'parse_version'
+
+                (rc, out, err) = self.run_command(name, cmd)
+                data = getattr(self, method)(name, rc, out, err)
+                if len(data) > 0:
+                    self.facts[name] = data
+
+class WebServer(FactsBase):
+    COMMANDS = dict(
+        apache=dict(
+            search=['apachectl', 'apache2ctl', 'apache2', 'httpd'],
+            cmd='%s -v',
+            fields=dict(
+                version=dict(
+                    regex=r'Apache/(\S+)',
+                    group=1
+                ),
+                builddate=dict(
+                    regex=r'Server built:\s+(.*)',
+                    group=1
+                )
+            )
+        ),
+        lighttpd=dict(
+            cmd='%s -v',
+            fields=dict(
+                version=dict(
+                    regex=r'lighttpd/(\S+)',
+                    group=1
+                ),
+                builddate=dict(
+                    regex=r'Build-Date: (.*)',
+                    group=1
+                )
+            )
+        ),
+        nginx=dict(
+            fields=dict(
+                version=dict(
+                    regex=r'nginx/(\S+)',
+                    group=1
+                )
+            )
+        )
+    )
+
+class Database(FactsBase):
+    COMMANDS = dict(
+        mysql=dict(
+            search='mysqld',
+            fields = dict(
+                version = dict(
+                    regex = r'Ver (\S+)',
+                    group = 1
+                )
+            )
+        ),
+        postgres=dict(
+            search="psql",
+            fields = dict(
+                version = dict(
+                    regex = r'PostgreSQL\) (\S+)',
+                    group = 1
+                )
+            )
+        ),
+        sqlite3= dict(
+            fields=dict(
+                version=dict(
+                    regex=r'^(\S+)',
+                    group=1
+                )
+            )
+        )
+    )
+
+    def parse_mysql(self, name, rc, out, err):
+        data = self.parse_from_cmd(name, out)
+
+        # detect Percona Server
+        if 'Percona Server' in out:
+            data['variant'] = 'Percona Server'
+
+        if 'MariaDB' in out:
+            data['variant'] = 'MariaDB'
+
+        return data
+
+
+class Language(FactsBase):
+    COMMANDS=dict(
+        python=dict(
+            search='python',
+            cmd='%s --version'
+        ),
+        node=dict(
+            fields=dict(
+                version=dict(
+                    regex=r'v(\S+)',
+                    group=1
+                )
+            )
+        ),
+        go=dict(
+            cmd="%s version",
+            fields=dict(
+                version=dict(
+                    regex=r'go(\S+)',
+                    group=1
+                )
+            )
+        ),
+        ruby=dict(
+            fields=dict(
+                version=dict(
+                    regex=r'^ruby (\S+)(?:.*\(([^\)]+)\))?(?:.*\[([^\]]+)\])?',
+                    group=1
+                ),
+                builddate = dict(
+                    regex = r'^ruby (\S+)(?:.*\(([^\)]+)\))?(?:.*\[([^\]]+)\])?',
+                    group = 2
+                ),
+                archname = dict(
+                    regex = r'^ruby (\S+)(?:.*\(([^\)]+)\))?(?:.*\[([^\]]+)\])?',
+                    group = 3
+                )
+            )
+        ),
+        perl=dict(
+            cmd='%s -V:version -V:archname',
+            fields=dict(
+                version=dict(
+                    regex=r"version='([^']+)'",
+                    group=1
+                ),
+                archname = dict(
+                    regex = r"archname='([^']+)'",
+                    group = 1
+                )
+            )
+        ),
+        php=dict(
+            fields=dict(
+                version=dict(
+                    regex=r'^PHP (\S+)',
+                    group=1
+                ),
+                builddate=dict(
+                    regex=r'(?:.*built: ([^\)]+))?',
+                    group=1
+                ),
+                zend_engine_version=dict(
+                    regex=r'Zend Engine v([^\s]+),',
+                    group=1
+                ),
+                zend_opcache_version=dict(
+                    regex=r'Zend OPcache v([^\s]+),',
+                    group=1
+                )
+            )
+        ),
+        php_modules=dict(
+            search='php',
+            cmd='%s -r "echo strtolower(json_encode(get_loaded_extensions()));"',
+            format='json'
+        )
+    )
+
+    def parse_python(self, name, rc, out ,err):
+        ver = sys.version.split("\n")[0].split(" ", 1)
+        return {
+            'version': ver[0],
+            'builddate': ver[1].replace("(default, ", '').replace(") ", '')
+        }
+
+FACT_SUBSETS = dict(
+    language = Language,
+    database = Database,
+    web = WebServer
+)
+VALID_SUBSETS = frozenset(FACT_SUBSETS.keys())
+
+def main():
+    module = AnsibleModule(
+        supports_check_mode = False,
+        argument_spec = dict(
+            var = dict(
+                required = False,
+                default = 'host_facts',
+                type = 'str'
+            ),
+        )
+    )
+
+    facts = dict()
+    for key in FACT_SUBSETS:
+        inst = FACT_SUBSETS[key](module)
+        inst.populate()
+        if len(inst.facts) > 0:
+            facts[key] = inst.facts
+
+    outfacts = dict()
+    outfacts[module.params.get('var')] = facts
+    module.exit_json(ansible_facts = outfacts)
+
+
+if __name__ == '__main__':
+    main()
