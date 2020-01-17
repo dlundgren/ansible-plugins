@@ -60,7 +60,7 @@ EXAMPLES = '''
 '''
 
 from ansible.module_utils.basic import *
-import socket, subprocess
+import socket
 
 class sasldb(object):
     def __init__(self, module, dest, name, realm, password):
@@ -92,9 +92,7 @@ class sasldb(object):
 
         # if there is a space we need to escape it
         cmd = [self.passwd, '-p', '-c', '-f', self.dest, '-u', self.realm, self.name]
-        p = subprocess.Popen(cmd, stdin = subprocess.PIPE)
-        p.communicate(input=self.password)
-        self.module.run_command(' '.join(cmd))
+        self.module.run_command(' '.join(cmd), data=self.password)
 
         if self.exists():
             self.changed = True
